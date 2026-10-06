@@ -41,9 +41,10 @@ export const AUTO_TEMPLATE_VARIANTS: Record<string, AutoVariant | undefined> = {
   "auto/cheap": "cheap",
   "auto/offline": "offline",
   "auto/smart": "smart",
-  "auto/claude-opus": "smart",
-  "auto/claude-sonnet": "coding",
-  "auto/claude-haiku": "fast",
+  // #15675: `auto/claude-*` are NOT flat variants — they live on the
+  // `auto/<family>` axis (modelFamily.ts) so the candidate pool is restricted to
+  // matching Claude tier models (`*opus*`/`*sonnet*`/`*haiku*`) instead of
+  // scoring the whole connected pool and routing to an unrelated model.
   "auto/best-free": "cheap",
   // Subscription-first routing (see `subscriptionLadder.ts`). `auto/subscription`
   // maps to no weight variant on purpose: its pool is already restricted to

@@ -24,7 +24,10 @@ export type ModelFamily =
   | "kimi"
   | "qwen"
   | "deepseek"
-  | "gpt";
+  | "gpt"
+  | "claude-opus"
+  | "claude-sonnet"
+  | "claude-haiku";
 
 export const MODEL_FAMILIES: readonly ModelFamily[] = [
   "glm",
@@ -38,6 +41,9 @@ export const MODEL_FAMILIES: readonly ModelFamily[] = [
   "qwen",
   "deepseek",
   "gpt",
+  "claude-opus",
+  "claude-sonnet",
+  "claude-haiku",
 ];
 
 const MODEL_FAMILY_SET: ReadonlySet<string> = new Set(MODEL_FAMILIES);
@@ -55,6 +61,12 @@ const FAMILY_ID_PATTERNS: ReadonlyArray<{ family: ModelFamily; pattern: RegExp }
   { family: "qwen", pattern: /^qwen/i },
   { family: "deepseek", pattern: /^deepseek-/i },
   { family: "gpt", pattern: /^gpt-/i },
+  // #15675: Claude tier names are substrings, not prefixes — ids come in shapes
+  // like `claude-opus-4.8`, `anthropic.claude-3-opus`, `claude-3-5-sonnet-*`.
+  // The \b word boundary keeps `octopus`-style ids from matching `opus`.
+  { family: "claude-opus", pattern: /\bopus/i },
+  { family: "claude-sonnet", pattern: /\bsonnet/i },
+  { family: "claude-haiku", pattern: /\bhaiku/i },
 ];
 
 /**
