@@ -61,12 +61,11 @@ const FAMILY_ID_PATTERNS: ReadonlyArray<{ family: ModelFamily; pattern: RegExp }
   { family: "qwen", pattern: /^qwen/i },
   { family: "deepseek", pattern: /^deepseek-/i },
   { family: "gpt", pattern: /^gpt-/i },
-  // #15675: Claude tier names are substrings, not prefixes — ids come in shapes
-  // like `claude-opus-4.8`, `anthropic.claude-3-opus`, `claude-3-5-sonnet-*`.
-  // The \b word boundary keeps `octopus`-style ids from matching `opus`.
-  { family: "claude-opus", pattern: /\bopus/i },
-  { family: "claude-sonnet", pattern: /\bsonnet/i },
-  { family: "claude-haiku", pattern: /\bhaiku/i },
+  // #15675: Claude tiers. Matches `claude-opus-4-8`, `claude-4.6-opus-high` and
+  // Bedrock-style `us.anthropic.claude-opus-4-v1:0` (the `.`-separated prefix).
+  { family: "claude-opus", pattern: /(?:^|\.)claude-(?:\d[\d.-]*-)?opus/i },
+  { family: "claude-sonnet", pattern: /(?:^|\.)claude-(?:\d[\d.-]*-)?sonnet/i },
+  { family: "claude-haiku", pattern: /(?:^|\.)claude-(?:\d[\d.-]*-)?haiku/i },
 ];
 
 /**

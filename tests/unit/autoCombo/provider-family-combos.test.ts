@@ -352,25 +352,12 @@ describe("additional auto-routing families (#13214)", () => {
     assert.equal(buildFamilyCandidateFilter("zai")({ provider: "glm", model: "glm-5.2" }), false);
   });
 
-  it("resolves auto/claude-* as model families, not flat variants (#15675)", () => {
-    // Regression: auto/claude-opus|sonnet|haiku used to live in
-    // AUTO_TEMPLATE_VARIANTS mapped to the smart/coding/fast weight packs, so the
-    // whole connected pool was scored and auto/claude-opus could route to an
-    // unrelated model (e.g. cheaperinference/aion-3.0). They are `auto/<family>`
-    // combos now: the candidate pool is restricted to matching Claude tier models.
-    for (const suffix of ["claude-opus", "claude-sonnet", "claude-haiku"]) {
-      assert.equal(
-        Object.prototype.hasOwnProperty.call(
-          builtinCatalog.AUTO_TEMPLATE_VARIANTS,
-          `auto/${suffix}`
-        ),
-        false,
-        `auto/${suffix} must not be a flat template variant`
-      );
-      assert.equal(isValidModelFamily(suffix), true, suffix);
+  it("resolves auto/claude-* as Claude model-family ids, not weight-pack variants (#15675)", () => {
+    for (const suffix of ["claude-haiku", "claude-opus", "claude-sonnet"]) {
+      assert.equal(builtinCatalog.AUTO_TEMPLATE_VARIANTS[`auto/${suffix}`], undefined);
       assert.equal(builtinCatalog.isRecognizedBuiltinAuto(`auto/${suffix}`, suffix), true);
       assert.deepEqual(builtinCatalog.resolveBuiltinAutoSpec(`auto/${suffix}`, suffix), {
-        variant: undefined,
+        family: suffix,
       });
     }
   });

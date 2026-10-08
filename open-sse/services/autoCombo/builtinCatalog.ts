@@ -4,7 +4,7 @@ import type { AutoVariant } from "./autoPrefix";
 import { VALID_VARIANTS } from "./autoPrefix";
 import type { PreparedVirtualAutoComboInputs } from "./virtualFactory";
 import { parseAutoSuffix, type AutoCategory, type AutoTier } from "./suffixComposition";
-import { isValidModelFamily, AUTO_FAMILY_IDS } from "./modelFamily";
+import { isValidModelFamily, AUTO_FAMILY_IDS, type ModelFamily } from "./modelFamily";
 
 export { AUTO_FAMILY_IDS };
 
@@ -41,10 +41,8 @@ export const AUTO_TEMPLATE_VARIANTS: Record<string, AutoVariant | undefined> = {
   "auto/cheap": "cheap",
   "auto/offline": "offline",
   "auto/smart": "smart",
-  // #15675: `auto/claude-*` are NOT flat variants — they live on the
-  // `auto/<family>` axis (modelFamily.ts) so the candidate pool is restricted to
-  // matching Claude tier models (`*opus*`/`*sonnet*`/`*haiku*`) instead of
-  // scoring the whole connected pool and routing to an unrelated model.
+  // auto/claude-{opus,sonnet,haiku} are model-FAMILY ids (#15675), resolved by
+  // `isValidModelFamily` — not weight-pack variants (those left the pool unfiltered).
   "auto/best-free": "cheap",
   // Subscription-first routing (see `subscriptionLadder.ts`). `auto/subscription`
   // maps to no weight variant on purpose: its pool is already restricted to
@@ -141,7 +139,9 @@ export function isPaidTierAutoId(autoId: string): boolean {
  * a candidate filter so the virtual combo only scores vision-capable models.
  */
 export type BuiltinAutoSpec =
-  { variant: AutoVariant | undefined } | { category: AutoCategory; tier?: AutoTier };
+  | { variant: AutoVariant | undefined }
+  | { category: AutoCategory; tier?: AutoTier }
+  | { family: ModelFamily };
 
 /**
  * Vision-flavored flat ids that MUST resolve to the `vision` category (candidate
@@ -168,6 +168,8 @@ export function resolveBuiltinAutoSpec(modelStr: string, suffix: string): Builti
   if (resolved.recognized) {
     return { variant: resolved.variant };
   }
+
+  if (isValidModelFamily(suffix)) return { family: suffix };
 
   const parsed = parseAutoSuffix(suffix);
   if (parsed.valid) {

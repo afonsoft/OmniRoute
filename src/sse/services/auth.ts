@@ -53,6 +53,7 @@ import {
   getQuotaWindowStatus,
   hydrateCodexQuotaCacheForRequest,
   isQuotaExhaustedForRequest,
+  getClaudeQuotaPreflightResetAt,
   resolveClaudeQuotaCooldownMs as resolveClaudeCooldown,
 } from "@/domain/quotaCache";
 import { isClaudeExtraUsageAllowed } from "@/lib/providers/claudeExtraUsage";
@@ -637,7 +638,6 @@ function compareP2CConnections(
 
   return a.id.localeCompare(b.id);
 }
-
 /**
  * Sentinel connection id used for the synthetic credentials of no-auth /
  * keyless providers. It is NOT a real DB row, so it
@@ -645,7 +645,6 @@ function compareP2CConnections(
  * exclude it (#3061), otherwise it gets re-selected forever.
  */
 const SYNTHETIC_NOAUTH_CONNECTION_ID = "noauth";
-
 type AnonymousFallbackProviderDefinition = {
   anonymousFallback?: boolean;
   noAuth?: boolean;
@@ -668,6 +667,7 @@ function buildSyntheticNoAuthCredentials(providerSpecificData: JsonRecord = {}):
   errorCode: null;
   rateLimitedUntil: null;
   maxConcurrent: null;
+  rateLimitMaxConcurrent: null;
   allRateLimited?: never;
   allExpired?: never;
   retryAfter?: never;
@@ -691,9 +691,9 @@ function buildSyntheticNoAuthCredentials(providerSpecificData: JsonRecord = {}):
     errorCode: null,
     rateLimitedUntil: null,
     maxConcurrent: null,
+    rateLimitMaxConcurrent: null,
   };
 }
-
 /** Merge one connection's fingerprints/accountProxies into `hydrated`, first-wins. */
 function mergeNoAuthProviderSpecificData(
   hydrated: JsonRecord,
@@ -1112,6 +1112,7 @@ async function materializeConnection(
     errorCode: connection.errorCode,
     rateLimitedUntil: connection.rateLimitedUntil,
     maxConcurrent: connection.maxConcurrent,
+    rateLimitMaxConcurrent: connection.rateLimitMaxConcurrent,
     quotaWindowThresholds: connection.quotaWindowThresholds ?? null,
     ...(releaseOAuthSession ? { releaseOAuthSession } : {}),
     ...buildAntigravityRoutingFields(extra.routingLease, connection.id, extra.requestedModel),
@@ -1441,6 +1442,16 @@ export async function getProviderCredentials(
         allConnections = allConnections.filter((conn) => allowedConnections.includes(conn.id));
       }
       const blockedByKeyPolicyCount = connectionsBeforeKeyPolicy - allConnections.length;
+      // A scoped pool may contain an allowed but inactive account. Excluding
+      // unrelated siblings does not turn that account's unavailability into a
+      // permission failure. Preserve 403 for an explicitly forbidden pin.
+      const keyPolicyDeniesTarget =
+        allConnections.length === 0 ||
+        Boolean(
+          forcedConnectionId &&
+          allowedConnections?.length &&
+          !allowedConnections.includes(forcedConnectionId)
+        );
       if (forcedConnectionId) {
         allConnections = allConnections.filter((conn) => conn.id === forcedConnectionId);
       }
@@ -1514,7 +1525,7 @@ export async function getProviderCredentials(
         return geminiEnvCredentials;
       }
       invalidateManagedLease(options, "CONNECTION_INELIGIBLE");
-      if (blockedByKeyPolicyCount > 0) {
+      if (blockedByKeyPolicyCount > 0 && keyPolicyDeniesTarget) {
         // #13832: the pool is empty only because the calling key's allowlist /
         // quota scope removed every connection. Say so instead of returning the
         // bare null that becomes "No active credentials for provider: X".
@@ -1913,11 +1924,16 @@ export async function getProviderCredentials(
     }
 
     if (withQuota.length === 0 && exhaustedQuota.length > 0) {
-      // All remaining eligible accounts are exhausted
       const earliestResetAt = getEarliestFutureDate(
         exhaustedQuota.map((c) => {
-          const entry = getQuotaCache(c.id);
-          return entry?.nextResetAt || null;
+          if (resolveProviderId(provider) === "claude") {
+            return (
+              getClaudeQuotaPreflightResetAt(c.id, requestedModel, c.providerSpecificData) ||
+              getQuotaCache(c.id)?.nextResetAt ||
+              null
+            );
+          }
+          return getQuotaCache(c.id)?.nextResetAt || null;
         })
       );
       const earliestResetMs = parseFutureDateMs(earliestResetAt);
@@ -1930,7 +1946,7 @@ export async function getProviderCredentials(
         allRateLimited: true,
         retryAfter,
         retryAfterHuman: formatRetryAfter(retryAfter),
-        lastError: `All ${provider} accounts have exhausted their quota (cached quota state, no upstream attempt; earliest reset ${formatRetryAfter(retryAfter)})`,
+        lastError: `All ${provider} accounts have exhausted their quota (cached quota state, no upstream attempt; earliest ${formatRetryAfter(retryAfter)})`,
         lastErrorCode: 429,
       };
     }
@@ -2679,6 +2695,11 @@ export function buildExhaustionOptions(
 }
 
 /** Persist exponential-backoff state for an unavailable provider connection. */
+/** The content-stall watchdog's error (open-sse/utils/streamHandler.ts). */
+function isStreamContentStall(errorText: string): boolean {
+  return /stream content stall/i.test(String(errorText || ""));
+}
+
 export async function markAccountUnavailable(
   connectionId: string,
   status: number,
@@ -2742,6 +2763,25 @@ export async function markAccountUnavailable(
     // Request-scoped refusal: nothing about it belongs on this account or this model.
     if (isOpencodeFreeTierRefusalForProvider(provider, status, errorText))
       return { shouldFallback: true, cooldownMs: 0 };
+
+    // A stream content stall gave up on this one request (usually a long reasoning turn
+    // with no output yet); cooling the account for it takes healthy capacity out of routing.
+    if (
+      isStreamContentStall(errorText) &&
+      !resolveResilienceSettings(await getCachedSettings()).streamStallCooldown.enabled
+    ) {
+      updateProviderConnection(connectionId, {
+        lastErrorType: "server_error",
+        lastError: `Stream stalled on ${model ?? "request"} (no account cooldown)`,
+        lastErrorAt: new Date().toISOString(),
+        errorCode: status,
+      }).catch(() => {});
+      log.info(
+        "AUTH",
+        `${connectionId.slice(0, 8)} stream content stall on ${provider}:${model ?? "n/a"} — no account cooldown`
+      );
+      return { shouldFallback: true, cooldownMs: 0 };
+    }
 
     // ─── Anti-Thundering Herd Guard ─────────────────────────────────
     // If this connection was ALREADY marked unavailable by a prior concurrent
@@ -3037,7 +3077,7 @@ export async function markAccountUnavailable(
       return { shouldFallback: true, cooldownMs: lockout.cooldownMs };
     }
     if (
-      (hasPerModelFailureScope(provider, model, connectionPassthroughModels, status) ||
+      (hasPerModelFailureScope(provider, model, connectionPassthroughModels, status, errorText) ||
         isModelScopedClaudeQuota) &&
       provider &&
       provider !== "codex" &&
