@@ -32,9 +32,6 @@
   "src/app/api/cli-tools/grok-build-settings/route.ts": {
     "TS2304": 1
   },
-  "src/app/api/cli-tools/hermes-agent-settings/route.ts": {
-    "TS2345": 1
-  },
   "src/app/api/cli-tools/letta-settings/route.ts": {
     "TS2339": 1
   },
@@ -46,9 +43,6 @@
   },
   "src/app/api/combos/auto/route.ts": {
     "TS2322": 1
-  },
-  "src/app/api/combos/test/route.ts": {
-    "TS2345": 1
   },
   "src/app/api/compression/compare/route.ts": {
     "TS2345": 1
@@ -152,7 +146,6 @@
   },
   "src/app/api/providers/route.ts": {
     "TS2352": 1,
-    "TS2322": 2,
     "TS2345": 3
   },
   "src/app/api/providers/test-batch/route.ts": {
@@ -189,7 +182,6 @@
     "TS2339": 1
   },
   "src/app/api/settings/cache-config/route.ts": {
-    "TS2339": 1,
     "TS2322": 1
   },
   "src/app/api/settings/database/route.ts": {
@@ -234,10 +226,6 @@
   "src/app/api/tools/agent-bridge/agents/[id]/detected-models/route.ts": {
     "TS2769": 1
   },
-  "src/app/api/tools/traffic-inspector/internal/ingest/route.ts": {
-    "TS1117": 2,
-    "TS2345": 1
-  },
   "src/app/api/tools/traffic-inspector/ws/route.ts": {
     "TS2578": 1
   },
@@ -273,7 +261,7 @@
     "TS2322": 4
   },
   "src/app/api/v1/messages/count_tokens/route.ts": {
-    "TS2339": 2,
+    "TS2339": 1,
     "TS2322": 1
   },
   "src/app/api/v1/music/generations/route.ts": {
@@ -382,12 +370,6 @@
   },
   "src/lib/ws/handshake.ts": {
     "TS2339": 1
-  },
-  "src/mitm/detection/index.ts": {
-    "TS2741": 1
-  },
-  "src/mitm/inspector/httpProxyServer.ts": {
-    "TS2769": 1
   },
   "src/shared/schemas/cliCatalog.ts": {
     "TS2554": 2
