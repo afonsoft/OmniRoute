@@ -136,6 +136,17 @@ export function countMigrations() {
   return fs.readdirSync(abs).filter((f) => f.endsWith(".sql")).length;
 }
 
+// i18n README mirrors that exist on disk (docs/i18n/<locale>/README.md).
+export function i18nReadmeMirrorFiles() {
+  const dir = path.join(ROOT, "docs", "i18n");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => `docs/i18n/${d.name}/README.md`)
+    .filter((rel) => fs.existsSync(path.join(ROOT, rel)));
+}
+
 // STRICT: canonical i18n locale count, read from the shared config.
 export function countLocales() {
   const abs = path.join(ROOT, "config", "i18n.json");
@@ -464,6 +475,30 @@ export function makeNumberClaimValidator(expected, opts) {
   };
 }
 
+// The i18n README mirrors restate the migration count with a translated word.
+// Every shipped locale keeps the Latin stem "migrat" (migrations, migratsiooni,
+// migraties, migratsiya, migration …), so claim extraction only needs the numeral
+// adjacent to that stem — either "193 migrations" / "193 ta migratsiya" (numeral,
+// optionally one localised word, then the stem) or "migration 193 ခု" (stem, then
+// numeral). Six mirrors shipped stale at 193 on a 202 tree in the 2026-10 audit.
+export function makeI18nMigrationClaimValidator(expected) {
+  const numeralBefore = /(\d+)(?:\s+\p{L}+)?\s+migrat\w*/giu;
+  const numeralAfter = /migrat\w*\s+(\d+)/giu;
+  return (content) => {
+    const values = [];
+    for (const m of content.matchAll(numeralBefore)) values.push(Number(m[1]));
+    for (const m of content.matchAll(numeralAfter)) values.push(Number(m[1]));
+    if (!values.length) return { ok: true, detail: "no migration claim in this file" };
+    const stale = values.filter((v) => v !== expected);
+    if (!stale.length)
+      return { ok: true, detail: `${values.length} migration claim(s) match the code` };
+    return {
+      ok: false,
+      detail: `stale migration count(s) ${[...new Set(stale)].join(", ")} — code has ${expected}`,
+    };
+  };
+}
+
 // --- v3.8.50 hardening validators --------------------------------------------
 // PURE: doc total must equal the live provider-module total (closes the falso-verde
 // found in the 2026-08-12 audit: the doc sat hand-stale at 291 while the modules
@@ -570,6 +605,14 @@ export function buildChecks() {
         what: "migrations",
         pattern: /(\d+)\+? (?:versioned )?(?:SQL )?migrations?\b/gi,
       }),
+    },
+    {
+      label: "DB migrations count (i18n README mirrors)",
+      actual: countMigrations(),
+      docKey: "migrations",
+      strict: true,
+      files: i18nReadmeMirrorFiles(),
+      validate: makeI18nMigrationClaimValidator(countMigrations()),
     },
     {
       // The README footer and llm.txt each carry the product version as prose; both
