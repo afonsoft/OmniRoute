@@ -7,7 +7,7 @@ export function register_cloud(parent) {
   const tag = parent.command("cloud").description("Cloud endpoints");
   tag.command("post-api-cloud-auth")
     .description("Authenticate with cloud worker")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/cloud/auth";
@@ -23,7 +23,7 @@ export function register_cloud(parent) {
     });
   tag.command("put-api-cloud-credentials-update")
     .description("Update cloud worker credentials")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/cloud/credentials/update";
@@ -39,7 +39,7 @@ export function register_cloud(parent) {
     });
   tag.command("post-api-cloud-model-resolve")
     .description("Resolve model via cloud")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/cloud/model/resolve";
@@ -64,7 +64,7 @@ export function register_cloud(parent) {
     });
   tag.command("put-api-cloud-models-alias")
     .description("Update cloud model alias")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/cloud/models/alias";

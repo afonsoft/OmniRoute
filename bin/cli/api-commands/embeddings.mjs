@@ -5,10 +5,9 @@ import { readFileSync } from "node:fs";
 
 export function register_embeddings(parent) {
   const tag = parent.command("embeddings").description("Embeddings endpoints");
-  tag
-    .command("post-api-v1-embeddings")
+  tag.command("post-api-v1-embeddings")
     .description("Create embeddings")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/v1/embeddings";
@@ -18,20 +17,39 @@ export function register_embeddings(parent) {
           ? JSON.parse(readFileSync(opts.body.slice(1), "utf8"))
           : JSON.parse(opts.body);
       }
-      const res = await apiFetch(url, {
-        method: "POST",
-        body,
-        baseUrl: gOpts.baseUrl,
-        apiKey: gOpts.apiKey,
-      });
+      const res = await apiFetch(url, { method: "POST", body, baseUrl: gOpts.baseUrl, apiKey: gOpts.apiKey });
       const data = res.ok ? await res.json() : await res.text();
       emit(data, gOpts);
     });
-  tag
-    .command("post-api-v1-providers-provider-embeddings")
+  tag.command("post-api-v1-multimodal-embeddings")
+    .description("Create embeddings (Jina multimodal-embeddings alias)")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .action(async (opts, cmd) => {
+      const gOpts = cmd.optsWithGlobals();
+      let url = "/api/v1/multimodal-embeddings";
+      let body;
+      if (opts.body) {
+        body = opts.body.startsWith("@")
+          ? JSON.parse(readFileSync(opts.body.slice(1), "utf8"))
+          : JSON.parse(opts.body);
+      }
+      const res = await apiFetch(url, { method: "POST", body, baseUrl: gOpts.baseUrl, apiKey: gOpts.apiKey });
+      const data = res.ok ? await res.json() : await res.text();
+      emit(data, gOpts);
+    });
+  tag.command("get-api-v1-multimodal-embeddings")
+    .description("List embedding models (Jina multimodal-embeddings alias)")
+    .action(async (opts, cmd) => {
+      const gOpts = cmd.optsWithGlobals();
+      let url = "/api/v1/multimodal-embeddings";
+      const res = await apiFetch(url, { method: "GET", baseUrl: gOpts.baseUrl, apiKey: gOpts.apiKey });
+      const data = res.ok ? await res.json() : await res.text();
+      emit(data, gOpts);
+    });
+  tag.command("post-api-v1-providers-provider-embeddings")
     .description("Create embeddings (provider-specific)")
     .requiredOption("--provider <provider>", "")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/v1/providers/{provider}/embeddings";
@@ -42,12 +60,7 @@ export function register_embeddings(parent) {
           ? JSON.parse(readFileSync(opts.body.slice(1), "utf8"))
           : JSON.parse(opts.body);
       }
-      const res = await apiFetch(url, {
-        method: "POST",
-        body,
-        baseUrl: gOpts.baseUrl,
-        apiKey: gOpts.apiKey,
-      });
+      const res = await apiFetch(url, { method: "POST", body, baseUrl: gOpts.baseUrl, apiKey: gOpts.apiKey });
       const data = res.ok ? await res.json() : await res.text();
       emit(data, gOpts);
     });

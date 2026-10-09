@@ -23,4 +23,17 @@ export function register_telemetry(parent) {
       const data = res.ok ? await res.json() : await res.text();
       emit(data, gOpts);
     });
+  tag.command("get-api-v1-explain-routing")
+    .description("Routing explainability snapshot")
+    .option("--limit <limit>", "Events/quality rows to return; clamped to 1–500 (default 50).")
+    .action(async (opts, cmd) => {
+      const gOpts = cmd.optsWithGlobals();
+      let url = "/api/v1/explain/routing";
+      const qs = new URLSearchParams();
+      if (opts.limit != null) qs.set("limit", String(opts.limit));
+      if (qs.toString()) url += "?" + qs.toString();
+      const res = await apiFetch(url, { method: "GET", baseUrl: gOpts.baseUrl, apiKey: gOpts.apiKey });
+      const data = res.ok ? await res.json() : await res.text();
+      emit(data, gOpts);
+    });
 }

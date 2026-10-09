@@ -16,7 +16,7 @@ export function register_fallback(parent) {
     });
   tag.command("post-api-fallback-chains")
     .description("Create fallback chain")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/fallback/chains";
@@ -32,7 +32,7 @@ export function register_fallback(parent) {
     });
   tag.command("delete-api-fallback-chains")
     .description("Delete fallback chain")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/fallback/chains";

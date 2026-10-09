@@ -7,7 +7,7 @@ export function register_rerank(parent) {
   const tag = parent.command("rerank").description("Rerank endpoints");
   tag.command("post-api-v1-rerank")
     .description("Rerank documents")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/v1/rerank";

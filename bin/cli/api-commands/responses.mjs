@@ -7,7 +7,7 @@ export function register_responses(parent) {
   const tag = parent.command("responses").description("Responses endpoints");
   tag.command("post-api-v1-responses")
     .description("Create response (OpenAI Responses API)")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/v1/responses";

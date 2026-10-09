@@ -7,7 +7,7 @@ export function register_messages(parent) {
   const tag = parent.command("messages").description("Messages endpoints");
   tag.command("post-api-v1-messages")
     .description("Create message (Anthropic-compatible)")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/v1/messages";
@@ -23,7 +23,7 @@ export function register_messages(parent) {
     });
   tag.command("post-api-v1-messages-count-tokens")
     .description("Count tokens for a message")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/v1/messages/count_tokens";

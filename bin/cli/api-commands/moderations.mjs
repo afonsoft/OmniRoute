@@ -7,7 +7,7 @@ export function register_moderations(parent) {
   const tag = parent.command("moderations").description("Moderations endpoints");
   tag.command("post-api-v1-moderations")
     .description("Create moderation")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/v1/moderations";

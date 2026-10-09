@@ -7,7 +7,7 @@ export function register_translator(parent) {
   const tag = parent.command("translator").description("Translator endpoints");
   tag.command("post-api-translator-detect")
     .description("Detect request format")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/translator/detect";
@@ -23,7 +23,7 @@ export function register_translator(parent) {
     });
   tag.command("post-api-translator-translate")
     .description("Translate between formats")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/translator/translate";
@@ -39,7 +39,7 @@ export function register_translator(parent) {
     });
   tag.command("post-api-translator-send")
     .description("Send translated request to provider")
-    .option("--body <jsonOrPath>", "JSON body or @path/to/file.json")
+    .requiredOption("--body <jsonOrPath>", "JSON body or @path/to/file.json")
     .action(async (opts, cmd) => {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/translator/send";
@@ -59,6 +59,15 @@ export function register_translator(parent) {
       const gOpts = cmd.optsWithGlobals();
       let url = "/api/translator/history";
       const res = await apiFetch(url, { method: "GET", baseUrl: gOpts.baseUrl, apiKey: gOpts.apiKey });
+      const data = res.ok ? await res.json() : await res.text();
+      emit(data, gOpts);
+    });
+  tag.command("post-api-translator-transform-stream")
+    .description("POST translator › transform stream")
+    .action(async (opts, cmd) => {
+      const gOpts = cmd.optsWithGlobals();
+      let url = "/api/translator/transform-stream";
+      const res = await apiFetch(url, { method: "POST", baseUrl: gOpts.baseUrl, apiKey: gOpts.apiKey });
       const data = res.ok ? await res.json() : await res.text();
       emit(data, gOpts);
     });
