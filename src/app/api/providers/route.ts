@@ -44,6 +44,7 @@ import { getQuotaWindowObservation } from "@/domain/quotaCache";
 import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
 import { isManagedProviderConnectionId } from "@/lib/providers/catalog";
 import { isApiKeyRevealEnabled, maskStoredApiKey } from "@/lib/apiKeyExposure";
+import { looksEncrypted, decrypt } from "@/lib/db/encryption";
 import { cleanupProviderModelsAfterConnectionDelete } from "@/lib/db/models";
 import {
   buildModelSyncInternalHeaders,
@@ -234,6 +235,24 @@ export async function POST(request: Request) {
 
     if (!isValidProvider) {
       return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
+    }
+
+    // Reject ciphertext blobs pasted from another system or produced under a
+    // different STORAGE_ENCRYPTION_KEY: encrypt() stores `enc:v1:` values
+    // verbatim, so they would persist undecryptable and fail on first use
+    // (#15930). An envelope this deployment can still decrypt stays allowed.
+    if (
+      typeof apiKey === "string" &&
+      looksEncrypted(apiKey) &&
+      decrypt(apiKey, { quiet: true }) == null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "apiKey looks like an encrypted credential blob (enc:v1:…) from another system or key. Paste the plaintext API key — credentials are encrypted automatically at rest.",
+        },
+        { status: 400 }
+      );
     }
 
     let providerSpecificData = incomingPsd || null;

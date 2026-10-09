@@ -25,6 +25,7 @@ import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
 import { isApiKeyRevealEnabled, maskStoredApiKey } from "@/lib/apiKeyExposure";
 import { cleanupProviderModelsAfterConnectionDelete } from "@/lib/db/models";
 import { canUpdateProviderApiKey } from "@/shared/providers/webSessionCredentials";
+import { looksEncrypted, decrypt } from "@/lib/db/encryption";
 import {
   refreshConnectionRateLimits,
   enableRateLimitProtection,
@@ -180,6 +181,18 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (defaultModel !== undefined) updateData.defaultModel = defaultModel;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (apiKey && canUpdateProviderApiKey(existing.authType, existing.provider)) {
+      // Same guard as POST /api/providers: a foreign `enc:v1:` blob would be
+      // stored verbatim (encrypt() skips prefixed values) and never decrypt
+      // (#15930). Blobs this deployment can still decrypt stay allowed.
+      if (looksEncrypted(apiKey) && decrypt(apiKey, { quiet: true }) == null) {
+        return NextResponse.json(
+          {
+            error:
+              "apiKey looks like an encrypted credential blob (enc:v1:…) from another system or key. Paste the plaintext API key — credentials are encrypted automatically at rest.",
+          },
+          { status: 400 }
+        );
+      }
       if (existing.provider === "chatgpt-web-codex") {
         const validationId =
           incomingPsd && typeof incomingPsd.validationId === "string"
