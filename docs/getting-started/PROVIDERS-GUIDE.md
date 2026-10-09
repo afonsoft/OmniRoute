@@ -187,6 +187,15 @@ These providers offer **free access** with no credit card:
 
 **Tip**: Connect multiple free providers for **unlimited free AI** with automatic fallback!
 
+> **Qoder — know your credential type.** A Qoder **PAT** (tokens starting with
+> `pt-`, or `QODER_PERSONAL_ACCESS_TOKEN`) does not call an HTTP API: each
+> request spawns the local `qodercli` binary in print mode. That path has **no
+> tool calling** (callers' tools are answered in plain text), **no streaming**,
+> and a **45s per-request cap** — agent clients such as coding assistants will
+> not work through it. For tool calling / streaming use **Qoder OAuth**
+> (`Connect with OAuth`) or a normal API key instead. Set `CLI_QODER_BIN` if
+> `qodercli` is not on your PATH.
+
 ---
 
 ## Best Paid Providers
