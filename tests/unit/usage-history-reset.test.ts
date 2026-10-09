@@ -404,3 +404,52 @@ test("resetUsageHistory: 'all' wipes usage_history, daily_usage_summary, and hou
     teardown();
   }
 });
+
+test("resetUsageHistory: token_ledger survives 'all' — it is a balance ledger, not usage data (#16004)", async () => {
+  setup();
+  try {
+    const { getDbInstance } = await import("../../src/lib/db/core.ts");
+    const { resetUsageHistory } = await import("../../src/lib/db/cleanup.ts");
+
+    const db = getDbInstance();
+    const recentIso = new Date().toISOString();
+
+    db.prepare("INSERT INTO api_keys (id, name, key, created_at) VALUES (?, ?, ?, ?)").run(
+      "key-ledger-src",
+      "Ledger Source",
+      "sk-ledger-src",
+      recentIso
+    );
+    db.prepare("INSERT INTO api_keys (id, name, key, created_at) VALUES (?, ?, ?, ?)").run(
+      "key-ledger-dst",
+      "Ledger Dest",
+      "sk-ledger-dst",
+      recentIso
+    );
+    db.prepare(
+      `INSERT INTO token_ledger (from_api_key_id, to_api_key_id, amount, reason, idempotency_key, created_at)
+       VALUES ('key-ledger-src', 'key-ledger-dst', 100, 'grant', 'idem-1', ?)`
+    ).run(recentIso);
+    db.prepare("INSERT INTO usage_history (provider, model, timestamp) VALUES (?, ?, ?)").run(
+      "openai",
+      "gpt-test",
+      recentIso
+    );
+
+    const result = await resetUsageHistory("all");
+
+    assert.equal(
+      countRows(db, "token_ledger"),
+      1,
+      "token_ledger is a token BALANCE ledger (getBalance sums it, transferTokens keys off its idempotency_key) — usage reset must not touch it"
+    );
+    assert.equal(
+      result.deletedTokenLedger,
+      0,
+      "deletedTokenLedger stays 0 now that the table is not a reset target"
+    );
+    assert.equal(countRows(db, "usage_history"), 0, "usage rows are still wiped");
+  } finally {
+    teardown();
+  }
+});
